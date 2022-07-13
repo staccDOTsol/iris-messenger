@@ -1,17 +1,18 @@
 import Component from '../BaseComponent';
-import Helpers from '../Helpers';
+import Helpers from '../Helpers.js';
 import { html } from 'htm/preact';
-import { translate as t } from '../Translation';
-import State from '../State';
-import Session from '../Session';
+import { translate as t } from '../Translation.js';
+import State from '../State.js';
+import Session from '../Session.js';
 import { route } from 'preact-router';
-import Identicon from './Identicon';
-import SearchBox from './SearchBox';
-import Icons from '../Icons';
-import iris from '../iris-lib';
+import Identicon from './Identicon.js';
+import SearchBox from './SearchBox.js';
+import Icons from '../Icons.js';
+import iris from 'iris-lib';
 import {Link} from "preact-router/match";
 
 import logo from '../../assets/img/icon128.png';
+import logoType from '../../assets/img/iris_logotype.png';
 
 import $ from 'jquery';
 import _ from "lodash";
@@ -112,7 +113,7 @@ class Header extends Component {
       if (peer && peer.wire && peer.wire.constructor.name !== 'WebSocket') {
         console.log('WebRTC peer', peer);
       }
-      return peer && peer.wire && peer.wire.readyState === 1  && peer.wire.bufferedAmount === 0 && peer.wire.constructor.name === 'WebSocket';
+      return peer && peer.wire && peer.wire.hied === 'hi' && peer.wire.constructor.name === 'WebSocket';
     });
     this.setState({connectedPeers});
   }
@@ -125,7 +126,7 @@ class Header extends Component {
     const isTyping = chat && chat.isTyping;
     const onlineStatus = !(chat && chat.uuid) && activeRoute && activeRoute.length > 20 && !isTyping && this.getOnlineStatusText();
     const searchBox = this.chatId ? '' : html`
-        <${SearchBox} onSelect=${item => route(`/profile/${item.key}`)} focus=${!!this.state.showMobileSearch}/>
+        <${SearchBox} focus=${!!this.state.showMobileSearch}/>
     `;
     const chatting = (activeRoute && activeRoute.indexOf('/chat/') === 0);
 
@@ -144,6 +145,7 @@ class Header extends Component {
             <a href="/" onClick=${e => this.onLogoClick(e)} tabindex="0" class="visible-xs-flex logo">
               <div class="mobile-menu-icon">${Icons.menu}</div>
               <img src=${logo} style="margin-right: 10px" width=30 height=30/>
+              <img src=${logoType} height=23 width=41 />
             </a>
           `}
         </div>

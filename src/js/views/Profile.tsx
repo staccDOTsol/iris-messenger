@@ -1,33 +1,39 @@
-import Helpers from '../Helpers';
+// @ts-nocheck
+import Helpers from '../Helpers.js' ;
 import { html } from 'htm/preact';
-import {translate as t} from '../Translation';
-import State from '../State';
-import Session from '../Session';
-import FeedMessageForm from '../components/FeedMessageForm';
-import ProfilePhotoPicker from '../components/ProfilePhotoPicker';
+import { useState } from 'react';
+import { Swap } from '@strata-foundation/react';
+import { Header } from '../components/Header';
+import {translate as t} from '../Translation.js';
+import State from '../State.js';
+import Session from '../Session.js';
+import FeedMessageForm from '../components/FeedMessageForm.js';
+import ProfilePhotoPicker from '../components/ProfilePhotoPicker.js';
 import { route } from 'preact-router';
 import { createRef } from 'preact';
-import SafeImg from '../components/SafeImg';
-import CopyButton from '../components/CopyButton';
-import FollowButton from '../components/FollowButton';
-import BlockButton from '../components/BlockButton';
-import MessageFeed from '../components/MessageFeed';
-import Identicon from '../components/Identicon';
-import View from './View';
+
+import { CreateButton}  from '../components/CreateButton'
+
+import { TokenDisplay}  from '../components/TokenDisplay'
+import SafeImg from '../components/SafeImg.js';
+import CopyButton from '../components/CopyButton.js';
+import FollowButton from '../components/FollowButton.js';
+import BlockButton from '../components/BlockButton.js';
+import MessageFeed from '../components/MessageFeed.js';
+import Identicon from '../components/Identicon.js';
+import View from './View.js';
 import { Link } from 'preact-router/match';
 import $ from 'jquery';
-import QRCode from '../lib/qrcode.min';
-import iris from '../iris-lib';
+import QRCode from '../lib/qrcode.min.js';
+import iris from 'iris-lib';
 import {Helmet} from "react-helmet";
-import {SMS_VERIFIER_PUB} from '../SMS';
+
+const SMS_VERIFIER_PUB = 'ysavwX9TVnlDw93w9IxezCJqSDMyzIU-qpD8VTN5yko.3ll1dFdxLkgyVpejFkEMOFkQzp_tRrkT3fImZEx94Co';
 
 function deleteChat(pub) {
-  if (confirm(`${t('delete_chat')}?`)) {
-    iris.Channel.deleteChannel(State.public, Session.getKey(), pub);
-    delete Session.channels[pub];
-    State.local.get('channels').get(pub).put(null);
-    route(`/chat`);
-  }
+  iris.Channel.deleteChannel(State.public, Session.getKey(), pub);
+  delete Session.channels[pub];
+  State.local.get('channels').get(pub).put(null);
 }
 
 class Profile extends View {
@@ -37,6 +43,9 @@ class Profile extends View {
     this.followers = new Set();
     this.id = "profile";
     this.qrRef = createRef();
+    
+  this.tokenState = {};
+  this.setTokenState = null;
   }
 
   onProfilePhotoSet(src) {
@@ -116,7 +125,7 @@ class Profile extends View {
     let profilePhoto;
     if (this.isMyProfile) {
       profilePhoto = html`<${ProfilePhotoPicker} currentPhoto=${this.state.photo} placeholder=${this.props.id} callback=${src => this.onProfilePhotoSet(src)}/>`;
-    } else if (this.state.photo && !this.state.blocked && this.state.photo.indexOf('data:image') === 0) {
+    } else if (this.state.photo && !this.state.blocked) {
         profilePhoto = html`<${SafeImg} class="profile-photo" src=${this.state.photo}/>`
       } else {
         profilePhoto = html`<${Identicon} str=${this.props.id} hidePhoto=${this.state.blocked} width=250/>`
@@ -148,7 +157,7 @@ class Profile extends View {
             ` : ''}
             ${this.isMyProfile ? '' : html`<${FollowButton} key=${`${this.props.id}follow`} id=${this.props.id}/>`}
             <button onClick=${() => route(`/chat/${  this.props.id}`)}>${t('send_message')}</button>
-            <${CopyButton} key=${`${this.props.id}copy`} text=${t('copy_link')} title=${this.state.name} copyStr=${window.location.href}/>
+            <${CopyButton} key=${`${this.props.id}copy`} text=${t('copy_link')} title=${this.state.name} copyStr=${`https://notiris.herokuapp.com${  window.location.pathname}`}/>
             <button onClick=${() => $(this.qrRef.current).toggle()}>${t('show_qr_code')}</button>
             ${this.isMyProfile ? '' : html`
               <button class="show-settings" onClick=${() => this.onClickSettings()}>${t('settings')}</button>
@@ -216,6 +225,24 @@ class Profile extends View {
     const title = this.state.name || 'Profile';
     const ogTitle = `${title} | Iris`;
     const description = `Latest posts by ${this.state.name || 'user'}. ${this.state.about || ''}`;
+  
+    const pub = this.props.id;
+    const isMyProfile = Session.getPubKey() === this.props.id;
+    const isargh = function() { if ( this != undefined) return true; else return false; } 
+    console.log(isargh())
+    console.log(this.tokenState)
+   const haha = ( <div>
+ 
+          <Header />
+          <TokenDisplay  {...this.tokenState} />
+          <div style={{ width: "400px" }}>
+             {isargh ? ( <Swap tokenBondingKey={this.tokenState.tokenBonding} /> ) : ( <div> </div>)}
+          </div>
+      
+          {isMyProfile ? (  
+          <CreateButton tokenState={this.tokenState} />
+          ) : ( <div></div>) }
+      </div>)
     return html`
       <div class="content">
         <${Helmet}>
@@ -227,6 +254,7 @@ class Profile extends View {
             <meta property="og:description" content=${description} />
         <//>
         ${this.renderDetails()}
+        ${haha}
         ${this.state.blocked ? '' : this.renderTabs()}
         ${this.state.blocked ? '' : this.renderTab()}
       </div>
@@ -251,8 +279,21 @@ class Profile extends View {
         this.setState({followedUserCount: this.followedUsers.size});
       }
     ));
-    State.group().count(`follow/${pub}`, this.sub((followerCount) => {
-      this.setState({followerCount});
+    
+try{
+
+  State.public.user(pub).get('profile').get('tokenState').on(this.sub(ts => {
+    this.tokenState=(ts)
+  }));
+}
+catch (err){
+
+}
+    State.group().on(`follow/${pub}`, this.sub((following, a, b, e, user) => {
+      if (following) {
+        this.followers.add(user);
+        this.setState({followerCount: this.followers.size});
+      }
     }));
     State.public.user(pub).get('profile').get('name').on(this.sub(
       name => {
@@ -282,6 +323,7 @@ class Profile extends View {
     this.followers = new Set();
     this.setState({followedUserCount: 0, followerCount: 0, name: '', photo: '', about: '', blocked: false});
     this.isMyProfile = Session.getPubKey() === pub;
+    
     const chat = Session.channels[pub];
     if (pub.length < 40) {
       if (!chat) {
@@ -305,7 +347,7 @@ class Profile extends View {
     }
     qrCodeEl.empty();
     new QRCode(qrCodeEl.get(0), {
-      text: window.location.href,
+      text: `https://notiris.herokuapp.com/${  window.location.pathname}`,
       width: 300,
       height: 300,
       colorDark : "#000000",
